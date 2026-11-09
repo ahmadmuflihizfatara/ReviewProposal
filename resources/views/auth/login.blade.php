@@ -10,7 +10,7 @@
             </p>
         </div>
 
-        <form method="POST" action="{{ route('login') }}" class="card space-y-6">
+        <form method="POST" action="{{ route('login') }}" data-validate class="card space-y-6">
             @csrf
             <h2 class="font-serif text-2xl">Masuk</h2>
 

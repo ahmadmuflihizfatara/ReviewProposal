@@ -131,6 +131,22 @@ class ProposalReviewFlowTest extends TestCase
         $this->assertSame('abc', Review::sole()->scores['metode']);
     }
 
+    public function test_duplicate_registration_number_and_email_are_reported_not_crashed(): void
+    {
+        $taken = Proposal::factory()->registered()->create();
+        $proposal = Proposal::factory()->create();
+
+        $this->actingAs(User::factory()->reviewer()->create())
+            ->post('/reviews', ['proposal_id' => $proposal->id, 'registration_number' => $taken->registration_number])
+            ->assertSessionHasErrors('registration_number');
+        $this->assertNull($proposal->fresh()->registration_number);
+
+        $user = User::factory()->create();
+        $this->post('/logout');
+        $this->post('/register', ['name' => 'X', 'email' => $user->email, 'role' => 'issuer'])
+            ->assertSessionHasErrors('email');
+    }
+
     public function test_roles_are_enforced(): void
     {
         $issuer = User::factory()->create();

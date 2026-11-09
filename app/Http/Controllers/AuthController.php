@@ -4,10 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Role;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class AuthController extends Controller
@@ -19,12 +19,10 @@ class AuthController extends Controller
 
     public function login(Request $request): RedirectResponse
     {
-        $credentials = $request->validate([
-            'email' => ['required', 'string', 'max:255'],
-            'password' => ['nullable', 'string'],
-        ]);
-
-        $credentials['password'] ??= '';
+        $credentials = [
+            'email' => (string) $request->input('email'),
+            'password' => (string) $request->input('password'),
+        ];
 
         if (! Auth::attempt($credentials, $request->boolean('remember'))) {
             return back()
@@ -44,16 +42,16 @@ class AuthController extends Controller
 
     public function register(Request $request): RedirectResponse
     {
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'max:255', 'unique:users,email'],
-            'role' => ['required', Rule::enum(Role::class)],
-            'password' => ['nullable', 'string'],
-        ]);
-
-        $data['password'] ??= '';
-
-        $user = User::create($data);
+        try {
+            $user = User::create([
+                'name' => (string) $request->input('name'),
+                'email' => (string) $request->input('email'),
+                'role' => Role::tryFrom((string) $request->input('role')) ?? Role::Issuer,
+                'password' => (string) $request->input('password'),
+            ]);
+        } catch (UniqueConstraintViolationException) {
+            return back()->withInput()->withErrors(['email' => 'Email sudah terdaftar.']);
+        }
 
         Auth::login($user);
         $request->session()->regenerate();

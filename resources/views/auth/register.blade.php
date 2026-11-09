@@ -17,7 +17,7 @@
             </dl>
         </div>
 
-        <form method="POST" action="{{ route('register') }}" class="card space-y-6">
+        <form method="POST" action="{{ route('register') }}" data-validate class="card space-y-6">
             @csrf
             <h2 class="font-serif text-2xl">Daftar</h2>
 

@@ -26,15 +26,9 @@ class ProposalController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $data = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'summary' => ['required', 'string', 'max:5000'],
-            'file' => ['nullable', 'file', 'mimes:pdf', 'max:10240'],
-        ]);
-
         $proposal = $request->user()->proposals()->create([
-            'title' => $data['title'],
-            'summary' => $data['summary'],
+            'title' => (string) $request->input('title'),
+            'summary' => (string) $request->input('summary'),
             'file_path' => $request->file('file')?->store('proposals'),
         ]);
 

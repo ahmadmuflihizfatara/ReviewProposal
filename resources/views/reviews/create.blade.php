@@ -7,7 +7,7 @@
         3 => 'Catatan setiap aspek',
         4 => 'Rekomendasi',
     ];
-    $canReview = $proposalReady && ! $existingReview;
+    $canReview = ! $existingReview;
 @endphp
 
 <x-layout title="Nilai Proposal">
@@ -30,7 +30,7 @@
     </ol>
 
     {{-- Langkah 1 --}}
-    <form method="GET" action="{{ route('reviews.create') }}" class="card">
+    <form method="GET" action="{{ route('reviews.create') }}" class="card" data-validate>
         <input type="hidden" name="proposal" value="{{ $proposal->id }}">
         <p class="label">1. Proposal yang dinilai</p>
         <p class="text-xl leading-snug">{{ $proposal->title }}</p>
@@ -44,9 +44,6 @@
         </div>
         <p class="mt-2 font-sans text-xs text-cloud-dark">Diisi manual oleh reviewer. Bila proposal sudah punya nomor, nomor tersebut dipakai.</p>
 
-        @if ($registrationError)
-            <p class="error">{{ $registrationError }}</p>
-        @endif
         @if ($existingReview)
             <p class="mt-3 font-sans text-sm">
                 Anda sudah menilai proposal ini.
@@ -65,7 +62,7 @@
             @endif
         </div>
 
-        <form method="POST" action="{{ route('reviews.store') }}" class="mt-6" data-wizard @if ($errors->any()) data-show-all @endif>
+        <form method="POST" action="{{ route('reviews.store') }}" class="mt-6" data-wizard data-validate @if ($errors->any()) data-show-all @endif>
             @csrf
             <input type="hidden" name="proposal_id" value="{{ $proposal->id }}">
             <input type="hidden" name="registration_number" value="{{ $registrationNumber }}">
