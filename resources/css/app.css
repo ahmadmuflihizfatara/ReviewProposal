@@ -1,0 +1,72 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+
+/* Token dari DESIGN.md: kanvas parchment, satu aksen clay, tanpa shadow. */
+@theme {
+    --font-sans: 'Figtree', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --font-serif: 'Newsreader', ui-serif, Georgia, Cambria, 'Times New Roman', serif;
+
+    --color-slate-dark: #141413;
+    --color-slate-medium: #3d3d3a;
+    --color-ivory-medium: #f0eee6;
+    --color-ivory-light: #faf9f5;
+    --color-cloud-medium: #b0aea5;
+    --color-cloud-dark: #87867f;
+    --color-stone: #cccbc8;
+    --color-oat-warm: #e3dacc;
+    --color-manilla: #f5e3c7;
+    --color-clay: #d97757;
+    --color-clay-deep: #c6613f;
+}
+
+@layer base {
+    body {
+        @apply bg-ivory-medium text-slate-dark font-serif antialiased;
+    }
+
+    a {
+        @apply underline underline-offset-4 decoration-1;
+    }
+}
+
+@layer components {
+    .card {
+        @apply bg-ivory-light border border-stone rounded-3xl p-6 sm:p-8;
+    }
+
+    .label {
+        @apply block font-sans text-sm font-medium mb-2;
+    }
+
+    .input {
+        @apply w-full bg-ivory-light border border-stone rounded-xl px-4 py-3 font-sans text-base outline-none focus:border-slate-dark;
+    }
+
+    .btn {
+        @apply inline-flex items-center justify-center gap-2 font-sans text-[15px] font-medium no-underline cursor-pointer px-6 py-3 transition-colors;
+    }
+
+    /* Pakai bersama .btn. Aksi utama: clay, hanya satu per halaman. */
+    .btn-primary {
+        @apply bg-clay text-white rounded-lg hover:bg-clay-deep;
+    }
+
+    /* Filled ivory: radius bawah saja (signature DESIGN.md). */
+    .btn-secondary {
+        @apply bg-ivory-light text-slate-dark border border-stone rounded-b-lg hover:border-slate-dark;
+    }
+
+    .btn-ghost {
+        @apply text-slate-dark px-3 hover:underline;
+    }
+
+    .eyebrow {
+        @apply font-sans text-xs font-bold uppercase tracking-[0.12em] text-cloud-dark;
+    }
+
+    .error {
+        @apply font-sans text-sm text-clay-deep mt-2;
+    }
+}
