@@ -30,4 +30,20 @@ if (wizard && !wizard.hasAttribute('data-show-all')) {
     });
 
     steps.forEach((step, i) => (step.hidden = i !== 0));
+
+    // Penanda langkah bisa diklik: lompat ke langkah mana pun tanpa harus berurutan.
+    indicators.forEach((el) => {
+        const number = Number(el.dataset.stepIndicator);
+        el.setAttribute('role', 'button');
+        el.setAttribute('tabindex', '0');
+        el.classList.add('cursor-pointer');
+        const go = () => (number === 1 ? document.getElementById('registration_number').scrollIntoView({ behavior: 'smooth', block: 'center' }) : show(number - 2));
+        el.addEventListener('click', go);
+        el.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                go();
+            }
+        });
+    });
 }
