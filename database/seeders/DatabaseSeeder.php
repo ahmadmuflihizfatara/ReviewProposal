@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Budget;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -25,5 +26,17 @@ class DatabaseSeeder extends Seeder
             'name' => 'Reviewer Demo',
             'email' => 'reviewer@example.com',
         ]);
+
+        User::factory()->kaprodi()->create([
+            'name' => 'Kaprodi Demo',
+            'email' => 'kaprodi@example.com',
+        ]);
+
+        User::factory()->sekretaris()->create([
+            'name' => 'Sekretaris Demo',
+            'email' => 'sekretaris@example.com',
+        ]);
+
+        Budget::current()->update(['amount' => 100_000_000]);
     }
 }

@@ -21,6 +21,11 @@ class ProposalFactory extends Factory
         ]);
     }
 
+    public function approvedByKaprodi(): static
+    {
+        return $this->state(fn () => ['kaprodi_approved_at' => now()]);
+    }
+
     /**
      * Define the model's default state.
      *
@@ -32,6 +37,7 @@ class ProposalFactory extends Factory
             'issuer_id' => User::factory(),
             'title' => fake()->sentence(6),
             'summary' => fake()->paragraph(),
+            'budget' => fake()->numberBetween(1, 50) * 1_000_000,
             'file_path' => 'proposals/example.pdf',
         ];
     }

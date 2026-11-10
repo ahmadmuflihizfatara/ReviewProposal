@@ -29,11 +29,12 @@ class ProposalController extends Controller
         $proposal = $request->user()->proposals()->create([
             'title' => (string) $request->input('title'),
             'summary' => (string) $request->input('summary'),
+            'budget' => max(0, (int) $request->input('budget')),
             'file_path' => $request->file('file')?->store('proposals'),
         ]);
 
         return redirect()->route('proposals.show', $proposal)
-            ->with('status', 'Proposal diajukan. Nomor registrasi akan diberikan oleh reviewer.');
+            ->with('status', 'Proposal diajukan dan menunggu persetujuan Kaprodi.');
     }
 
     public function show(Request $request, Proposal $proposal): View

@@ -17,7 +17,8 @@
                 </span>
             </div>
             <h2 class="mt-4 text-xl leading-snug">{{ $proposal->title }}</h2>
-            <p class="mt-2 font-sans text-sm text-cloud-dark">Diajukan {{ $proposal->created_at->translatedFormat('d F Y') }}</p>
+            <p class="mt-2 font-sans text-sm text-cloud-dark">{{ $proposal->budgetLabel() }} · {{ $proposal->approvalLabel() }}</p>
+            <p class="mt-1 font-sans text-sm text-cloud-dark">Diajukan {{ $proposal->created_at->translatedFormat('d F Y') }}</p>
         </a>
         @if ($loop->last) </div> @endif
     @empty

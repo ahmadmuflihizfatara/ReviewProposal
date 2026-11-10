@@ -15,11 +15,11 @@
 
             @auth
                 <div class="flex items-center gap-1 sm:gap-4 text-sm">
-                    @can('review')
-                        <a href="{{ route('reviews.index') }}" class="no-underline text-cloud-dark hover:text-slate-dark">Dasbor</a>
-                    @else
+                    @can('submit-proposal')
                         <a href="{{ route('proposals.index') }}" class="no-underline text-cloud-dark hover:text-slate-dark">Proposal Saya</a>
                         <a href="{{ route('proposals.create') }}" class="no-underline text-cloud-dark hover:text-slate-dark">Ajukan</a>
+                    @else
+                        <a href="{{ route('dashboard') }}" class="no-underline text-cloud-dark hover:text-slate-dark">Dasbor</a>
                     @endcan
                     <span class="hidden md:inline text-cloud-dark">·</span>
                     <span class="hidden md:inline">{{ auth()->user()->name }} <span class="text-cloud-dark">({{ auth()->user()->role->label() }})</span></span>

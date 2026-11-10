@@ -9,11 +9,40 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['title', 'summary', 'file_path'])]
+#[Fillable(['title', 'summary', 'budget', 'file_path'])]
 class Proposal extends Model
 {
     /** @use HasFactory<ProposalFactory> */
     use HasFactory;
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'budget' => 'integer',
+            'kaprodi_approved_at' => 'datetime',
+            'sekretaris_approved_at' => 'datetime',
+        ];
+    }
+
+    public function budgetLabel(): string
+    {
+        return Budget::rupiah($this->budget);
+    }
+
+    /**
+     * Alur persetujuan: Kaprodi → Sekretaris → siap direview.
+     */
+    public function approvalLabel(): string
+    {
+        return match (true) {
+            $this->sekretaris_approved_at !== null => 'Disetujui Sekretaris',
+            $this->kaprodi_approved_at !== null => 'Menunggu Sekretaris',
+            default => 'Menunggu Kaprodi',
+        };
+    }
 
     /**
      * Nomor registrasi diisi manual oleh reviewer; sebelum itu proposal belum teregistrasi.

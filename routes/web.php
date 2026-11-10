@@ -1,8 +1,10 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\KaprodiController;
 use App\Http\Controllers\ProposalController;
 use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\SekretarisController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -16,9 +18,18 @@ Route::middleware('guest')->group(function () {
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
-    Route::get('/', fn (Request $request) => redirect()->route(
-        $request->user()->isReviewer() ? 'reviews.index' : 'proposals.index'
-    ))->name('dashboard');
+    Route::get('/', fn (Request $request) => redirect()->route($request->user()->role->homeRoute()))->name('dashboard');
+
+    Route::middleware('can:approve-kaprodi')->group(function () {
+        Route::get('/kaprodi', [KaprodiController::class, 'index'])->name('kaprodi.index');
+        Route::post('/kaprodi/proposals/{proposal}/approve', [KaprodiController::class, 'approve'])->name('kaprodi.approve');
+    });
+
+    Route::middleware('can:approve-sekretaris')->group(function () {
+        Route::get('/sekretaris', [SekretarisController::class, 'index'])->name('sekretaris.index');
+        Route::put('/sekretaris/budget', [SekretarisController::class, 'updateBudget'])->name('sekretaris.budget');
+        Route::post('/sekretaris/proposals/{proposal}/approve', [SekretarisController::class, 'approve'])->name('sekretaris.approve');
+    });
 
     Route::middleware('can:submit-proposal')->group(function () {
         Route::get('/proposals', [ProposalController::class, 'index'])->name('proposals.index');

@@ -3,6 +3,8 @@ const validationMessage = (field) => {
     const { validity } = field;
     if (validity.valueMissing) return 'Wajib diisi.';
     if (validity.tooLong) return `Maksimal ${field.maxLength} karakter.`;
+    if (validity.badInput || validity.stepMismatch) return 'Harus berupa angka bulat.';
+    if (validity.rangeUnderflow) return `Minimal ${field.min}.`;
     if (field.type === 'file' && field.files.length) {
         const file = field.files[0];
         if (file.type !== 'application/pdf') return 'Berkas harus berformat PDF.';

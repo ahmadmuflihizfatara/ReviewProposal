@@ -13,7 +13,7 @@
                 @forelse ($pendingProposals as $proposal)
                     <div class="rounded-2xl bg-ivory-light px-5 py-4 flex items-center justify-between gap-4">
                         <div class="min-w-0">
-                            <p class="font-sans text-xs font-semibold tracking-wide">{{ $proposal->registrationLabel() }}</p>
+                            <p class="font-sans text-xs font-semibold tracking-wide">{{ $proposal->registrationLabel() }} · <span class="font-normal text-cloud-dark">{{ $proposal->approvalLabel() }}</span></p>
                             <p class="mt-1 text-lg leading-snug truncate">{{ $proposal->title }}</p>
                         </div>
                         <a href="{{ route('reviews.create', ['proposal' => $proposal->id]) }}" class="btn btn-secondary shrink-0 px-4 py-2 text-sm">Nilai</a>

@@ -2,7 +2,7 @@
     <div class="max-w-3xl">
         <p class="eyebrow mb-3">Pengusul</p>
         <h1 class="font-sans font-bold text-4xl sm:text-5xl leading-tight tracking-tight">Ajukan proposal</h1>
-        <p class="mt-4 text-lg text-slate-medium">Setelah diajukan, sistem memberi nomor registrasi. Reviewer memakai nomor ini untuk memulai penilaian.</p>
+        <p class="mt-4 text-lg text-slate-medium">Setelah diajukan, proposal disetujui Kaprodi lalu Sekretaris sesuai anggaran yang tersedia, kemudian dinilai reviewer.</p>
 
         <form data-validate method="POST" action="{{ route('proposals.store') }}" enctype="multipart/form-data" class="card mt-10 space-y-6">
             @csrf
@@ -17,6 +17,12 @@
                 <label for="summary" class="label">Ringkasan</label>
                 <textarea id="summary" name="summary" rows="6" required maxlength="5000" class="input font-serif text-lg leading-relaxed">{{ old('summary') }}</textarea>
                 @error('summary') <p class="error">{{ $message }}</p> @enderror
+            </div>
+
+            <div>
+                <label for="budget" class="label">Anggaran yang diajukan (Rp)</label>
+                <input id="budget" name="budget" type="number" min="0" step="1" inputmode="numeric" value="{{ old('budget') }}" required class="input">
+                @error('budget') <p class="error">{{ $message }}</p> @enderror
             </div>
 
             <div>

@@ -5,6 +5,9 @@
         <p class="mt-4 font-sans text-sm text-slate-medium">
             Oleh {{ $proposal->issuer->name }} · diajukan {{ $proposal->created_at->translatedFormat('d F Y') }}
         </p>
+        <p class="mt-2 font-sans text-sm text-slate-medium">
+            Anggaran diajukan <strong>{{ $proposal->budgetLabel() }}</strong> · {{ $proposal->approvalLabel() }}
+        </p>
         <p class="mt-8 text-lg sm:text-xl leading-relaxed whitespace-pre-line max-w-3xl">{{ $proposal->summary }}</p>
         <div class="mt-8 flex flex-wrap gap-3">
             @if ($proposal->file_path)

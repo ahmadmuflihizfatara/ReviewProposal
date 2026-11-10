@@ -3,7 +3,7 @@
         <div class="lg:pt-8">
             <p class="eyebrow mb-4">Buat akun</p>
             <h1 class="font-sans font-bold text-4xl sm:text-5xl lg:text-[61px] leading-[1.1] tracking-tight">
-                Pilih peran Anda: mengajukan atau menilai.
+                Pilih peran Anda: mengajukan, menyetujui, atau menilai.
             </h1>
             <dl class="mt-8 space-y-5 text-lg leading-relaxed max-w-xl">
                 <div>
@@ -13,6 +13,14 @@
                 <div>
                     <dt class="font-sans font-semibold text-base">Reviewer</dt>
                     <dd class="text-slate-medium">Menilai proposal berdasarkan nomor registrasi, memberi skor, catatan, rekomendasi, dan TTE.</dd>
+                </div>
+                <div>
+                    <dt class="font-sans font-semibold text-base">Kaprodi</dt>
+                    <dd class="text-slate-medium">Menyetujui proposal yang diajukan sebelum diteruskan ke Sekretaris.</dd>
+                </div>
+                <div>
+                    <dt class="font-sans font-semibold text-base">Sekretaris</dt>
+                    <dd class="text-slate-medium">Mengelola anggaran tersedia dan menyetujui proposal sesuai anggaran.</dd>
                 </div>
             </dl>
         </div>

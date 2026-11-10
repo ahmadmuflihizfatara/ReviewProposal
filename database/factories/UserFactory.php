@@ -42,6 +42,20 @@ class UserFactory extends Factory
         ]);
     }
 
+    public function kaprodi(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => Role::Kaprodi,
+        ]);
+    }
+
+    public function sekretaris(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => Role::Sekretaris,
+        ]);
+    }
+
     /**
      * Indicate that the model's email address should be unverified.
      */
