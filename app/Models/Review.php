@@ -10,18 +10,68 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Review extends Model
 {
     /**
-     * Aspek substantif yang dinilai: key => [label, bobot (%)].
+     * Aspek substantif yang dinilai: key => [label, bobot (%)]. Total bobot 100%.
      *
      * @var array<string, array{0: string, 1: int}>
      */
     public const ASPECTS = [
-        'pendahuluan' => ['Pendahuluan: latar belakang, rumusan masalah, dan tujuan', 15],
-        'tinjauan_pustaka' => ['Tinjauan pustaka dan kebaruan gagasan', 15],
-        'metode' => ['Metode pelaksanaan', 25],
-        'luaran' => ['Potensi luaran dan manfaat', 20],
-        'biaya_jadwal' => ['Kewajaran biaya dan jadwal kegiatan', 15],
-        'penulisan' => ['Sistematika dan kualitas penulisan', 10],
+        'latar_belakang' => ['Latar belakang dan perumusan masalah sosial/teknis yang ingin dipecahkan', 20],
+        'metodologi' => ['Metodologi solusi yang ditawarkan', 15],
+        'metode' => ['Metode pelaksanaan (sasaran jumlah peserta, adanya rencana survei pengukuran kepuasan dan peningkatan pengetahuan)', 20],
+        'kebermanfaatan' => ['Peluang kebermanfaatan dan keberlanjutan', 15],
+        'referensi' => ['Manajemen referensi', 10],
+        'luaran' => ['Peluang luaran: HKI, publikasi jurnal/konferensi Abdimas', 20],
     ];
+
+    /**
+     * Nilai tiap aspek = skor (0–100) × bobot. Dibulatkan 2 desimal.
+     *
+     * @param  array<string, int|string>  $scores
+     * @return array<string, float>
+     */
+    public static function valuesFromScores(array $scores): array
+    {
+        $values = [];
+
+        foreach (self::ASPECTS as $key => [, $weight]) {
+            $values[$key] = round((int) $scores[$key] * $weight / 100, 2);
+        }
+
+        return $values;
+    }
+
+    /**
+     * Jumlah nilai semua aspek (0–100), atau null bila ada aspek tanpa nilai angka
+     * (mis. penilaian lama sebelum aspek dan bobot diubah).
+     */
+    public function totalValue(): ?float
+    {
+        $total = 0;
+
+        foreach (array_keys(self::ASPECTS) as $key) {
+            $value = $this->values[$key] ?? null;
+
+            if (! is_numeric($value)) {
+                return null;
+            }
+
+            $total += $value;
+        }
+
+        return round($total, 2);
+    }
+
+    /**
+     * Format angka gaya Indonesia tanpa nol desimal berlebih: 12.5 → "12,5".
+     */
+    public static function formatNumber(mixed $number): string
+    {
+        if (! is_numeric($number)) {
+            return (string) ($number ?? '-');
+        }
+
+        return rtrim(rtrim(number_format((float) $number, 2, ',', '.'), '0'), ',');
+    }
 
     /**
      * @return array<string, string>

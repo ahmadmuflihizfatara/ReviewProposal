@@ -13,8 +13,12 @@
         <nav class="mx-auto max-w-6xl px-4 sm:px-6 h-16 flex items-center justify-between gap-4 font-sans">
             <a href="{{ route('dashboard') }}" class="no-underline text-xs font-bold uppercase tracking-[0.16em]">Review Proposal</a>
 
+            @guest
+                <a href="{{ route('docs') }}" class="no-underline text-sm text-cloud-dark hover:text-slate-dark">Dokumentasi</a>
+            @endguest
             @auth
                 <div class="flex items-center gap-1 sm:gap-4 text-sm">
+                    <a href="{{ route('docs') }}" class="no-underline text-cloud-dark hover:text-slate-dark">Docs</a>
                     @can('submit-proposal')
                         <a href="{{ route('proposals.index') }}" class="no-underline text-cloud-dark hover:text-slate-dark">Proposal Saya</a>
                         <a href="{{ route('proposals.create') }}" class="no-underline text-cloud-dark hover:text-slate-dark">Ajukan</a>

@@ -14,7 +14,7 @@
                 <a href="{{ route('proposals.file', $proposal) }}" class="btn btn-secondary">Unduh berkas PDF</a>
             @endif
             @can('review')
-                @if ($reviews->isEmpty())
+                @if ($reviews->isEmpty() && $proposal->isApproved())
                     <a href="{{ route('reviews.create', ['proposal' => $proposal->id]) }}" class="btn btn-primary">Nilai proposal ini</a>
                 @endif
             @endcan

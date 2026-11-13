@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Database\Factories\ProposalFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -14,6 +16,32 @@ class Proposal extends Model
 {
     /** @use HasFactory<ProposalFactory> */
     use HasFactory;
+
+    /**
+     * Format nomor registrasi PL{prodi}/{No}/{Bulan Romawi}/{Tahun}, mis. PLTI/001/XI/2026.
+     * Dipakai di validasi server (regex) dan atribut pattern HTML.
+     */
+    public const REGISTRATION_NUMBER_PATTERN = 'PL[A-Z]{2,5}/(?!000)[0-9]{3}/(I|II|III|IV|V|VI|VII|VIII|IX|X|XI|XII)/(19|20)[0-9]{2}';
+
+    public const MIN_BUDGET = 100_000;
+
+    public const MAX_BUDGET = 1_000_000_000;
+
+    /**
+     * Proposal yang sudah disetujui Kaprodi lalu Sekretaris dan boleh dinilai reviewer.
+     *
+     * @param  Builder<Proposal>  $query
+     */
+    #[Scope]
+    protected function approved(Builder $query): void
+    {
+        $query->whereNotNull('kaprodi_approved_at')->whereNotNull('sekretaris_approved_at');
+    }
+
+    public function isApproved(): bool
+    {
+        return $this->kaprodi_approved_at !== null && $this->sekretaris_approved_at !== null;
+    }
 
     /**
      * @return array<string, string>

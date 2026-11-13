@@ -16,13 +16,13 @@
 
             <div>
                 <label for="email" class="label">Email</label>
-                <input id="email" name="email" type="text" value="{{ old('email') }}" required autofocus autocomplete="email" class="input">
+                <input id="email" name="email" type="email" value="{{ old('email') }}" required maxlength="255" autofocus autocomplete="email" class="input">
                 @error('email') <p class="error">{{ $message }}</p> @enderror
             </div>
 
             <div>
                 <label for="password" class="label">Kata sandi</label>
-                <input id="password" name="password" type="password" autocomplete="current-password" class="input">
+                <input id="password" name="password" type="password" required autocomplete="current-password" class="input">
                 @error('password') <p class="error">{{ $message }}</p> @enderror
             </div>
 

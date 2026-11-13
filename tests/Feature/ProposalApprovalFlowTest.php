@@ -6,6 +6,8 @@ use App\Models\Budget;
 use App\Models\Proposal;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class ProposalApprovalFlowTest extends TestCase
@@ -14,9 +16,16 @@ class ProposalApprovalFlowTest extends TestCase
 
     public function test_issuer_submits_proposal_with_budget(): void
     {
+        Storage::fake();
+
         $this->actingAs(User::factory()->create())
-            ->post('/proposals', ['title' => 'T', 'summary' => 'S', 'budget' => '15000000'])
-            ->assertRedirect();
+            ->post('/proposals', [
+                'title' => 'Judul proposal uji',
+                'summary' => str_repeat('Ringkasan. ', 6),
+                'budget' => '15000000',
+                'file' => UploadedFile::fake()->create('proposal.pdf', 100, 'application/pdf'),
+            ])
+            ->assertSessionHasNoErrors();
 
         $proposal = Proposal::sole();
         $this->assertSame(15_000_000, $proposal->budget);
@@ -31,8 +40,10 @@ class ProposalApprovalFlowTest extends TestCase
 
         // Sekretaris belum bisa menyetujui sebelum Kaprodi.
         Budget::current()->update(['amount' => 100_000_000]);
-        $this->actingAs($sekretaris)->post(route('sekretaris.approve', $proposal));
+        $this->actingAs($sekretaris)->post(route('sekretaris.approve', $proposal))
+            ->assertSessionHas('status', fn (string $status) => str_contains($status, 'belum disetujui Kaprodi'));
         $this->assertNull($proposal->fresh()->sekretaris_approved_at);
+        $this->assertSame(100_000_000, Budget::current()->amount);
 
         $this->actingAs($kaprodi)->get(route('kaprodi.index'))->assertOk()->assertSee($proposal->title);
         $this->actingAs($kaprodi)->post(route('kaprodi.approve', $proposal))->assertRedirect();
@@ -68,20 +79,24 @@ class ProposalApprovalFlowTest extends TestCase
             ->assertRedirect();
 
         $this->assertSame(250_000_000, Budget::current()->amount);
+
+        $this->put(route('sekretaris.budget'), ['amount' => '-5'])->assertSessionHasErrors('amount');
+        $this->put(route('sekretaris.budget'), ['amount' => 'abc'])->assertSessionHasErrors('amount');
+        $this->assertSame(250_000_000, Budget::current()->amount);
     }
 
-    public function test_reviewer_sees_all_proposals_regardless_of_approval(): void
+    public function test_reviewer_only_sees_fully_approved_proposals(): void
     {
         $unapproved = Proposal::factory()->create();
         $kaprodiOnly = Proposal::factory()->approvedByKaprodi()->create();
+        $approved = Proposal::factory()->approved()->create();
 
         $this->actingAs(User::factory()->reviewer()->create())
             ->get(route('reviews.index'))
             ->assertOk()
-            ->assertSee($unapproved->title)
-            ->assertSee($kaprodiOnly->title)
-            ->assertSee('Menunggu Kaprodi')
-            ->assertSee('Menunggu Sekretaris');
+            ->assertSee($approved->title)
+            ->assertDontSee($unapproved->title)
+            ->assertDontSee($kaprodiOnly->title);
     }
 
     public function test_approval_roles_are_enforced(): void

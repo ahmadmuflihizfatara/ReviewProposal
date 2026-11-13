@@ -8,6 +8,8 @@ use App\Http\Controllers\SekretarisController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
+Route::view('/docs', 'docs.index')->name('docs');
+
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:6,1');

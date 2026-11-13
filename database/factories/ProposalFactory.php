@@ -17,13 +17,21 @@ class ProposalFactory extends Factory
     public function registered(): static
     {
         return $this->state(fn () => [
-            'registration_number' => sprintf('PRP-%s-%04d', now()->year, fake()->unique()->numberBetween(1, 9999)),
+            'registration_number' => sprintf('PLTI/%03d/XI/%s', fake()->unique()->numberBetween(1, 999), now()->year),
         ]);
     }
 
     public function approvedByKaprodi(): static
     {
         return $this->state(fn () => ['kaprodi_approved_at' => now()]);
+    }
+
+    /**
+     * Disetujui Kaprodi lalu Sekretaris: siap dinilai reviewer.
+     */
+    public function approved(): static
+    {
+        return $this->state(fn () => ['kaprodi_approved_at' => now(), 'sekretaris_approved_at' => now()]);
     }
 
     /**

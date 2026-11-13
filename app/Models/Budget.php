@@ -11,6 +11,8 @@ use Illuminate\Database\Eloquent\Model;
 #[Fillable(['amount'])]
 class Budget extends Model
 {
+    public const MAX_AMOUNT = 100_000_000_000;
+
     /**
      * Ambil (atau buat) satu-satunya baris anggaran.
      */

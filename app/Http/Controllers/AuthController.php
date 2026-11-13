@@ -4,14 +4,20 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Role;
-use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 
 class AuthController extends Controller
 {
+    /**
+     * Huruf (termasuk beraksen), spasi, titik, apostrof, dan tanda hubung.
+     */
+    public const NAME_PATTERN = "[\p{L} .'\-]+";
+
     public function showLogin(): View
     {
         return view('auth.login');
@@ -19,10 +25,12 @@ class AuthController extends Controller
 
     public function login(Request $request): RedirectResponse
     {
-        $credentials = [
-            'email' => (string) $request->input('email'),
-            'password' => (string) $request->input('password'),
-        ];
+        $request->merge(['email' => strtolower(trim((string) $request->input('email')))]);
+
+        $credentials = $request->validate([
+            'email' => ['required', 'string', 'email', 'max:255'],
+            'password' => ['required', 'string'],
+        ]);
 
         if (! Auth::attempt($credentials, $request->boolean('remember'))) {
             return back()
@@ -42,16 +50,16 @@ class AuthController extends Controller
 
     public function register(Request $request): RedirectResponse
     {
-        try {
-            $user = User::create([
-                'name' => (string) $request->input('name'),
-                'email' => (string) $request->input('email'),
-                'role' => Role::tryFrom((string) $request->input('role')) ?? Role::Issuer,
-                'password' => (string) $request->input('password'),
-            ]);
-        } catch (UniqueConstraintViolationException) {
-            return back()->withInput()->withErrors(['email' => 'Email sudah terdaftar.']);
-        }
+        $request->merge(['email' => strtolower(trim((string) $request->input('email')))]);
+
+        $data = $request->validate([
+            'name' => ['required', 'string', 'min:3', 'max:100', 'regex:/^'.self::NAME_PATTERN.'$/u'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+            'role' => ['required', Rule::enum(Role::class)],
+            'password' => ['required', 'string', 'confirmed', Password::min(8)->max(64)->mixedCase()->numbers()],
+        ]);
+
+        $user = User::create($data);
 
         Auth::login($user);
         $request->session()->regenerate();

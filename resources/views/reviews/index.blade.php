@@ -13,15 +13,18 @@
                 @forelse ($pendingProposals as $proposal)
                     <div class="rounded-2xl bg-ivory-light px-5 py-4 flex items-center justify-between gap-4">
                         <div class="min-w-0">
-                            <p class="font-sans text-xs font-semibold tracking-wide">{{ $proposal->registrationLabel() }} · <span class="font-normal text-cloud-dark">{{ $proposal->approvalLabel() }}</span></p>
+                            <p class="font-sans text-xs font-semibold tracking-wide">{{ $proposal->registrationLabel() }} · {{ $proposal->budgetLabel() }}</p>
                             <p class="mt-1 text-lg leading-snug truncate">{{ $proposal->title }}</p>
                         </div>
                         <a href="{{ route('reviews.create', ['proposal' => $proposal->id]) }}" class="btn btn-secondary shrink-0 px-4 py-2 text-sm">Nilai</a>
                     </div>
                 @empty
-                    <p class="px-5 py-6 text-lg text-slate-medium">Semua proposal sudah Anda nilai.</p>
+                    <p class="px-5 py-6 text-lg text-slate-medium">Tidak ada proposal disetujui yang menunggu penilaian Anda.</p>
                 @endforelse
             </div>
+            @if ($awaitingApprovalCount)
+                <p class="mt-3 font-sans text-sm text-cloud-dark">{{ $awaitingApprovalCount }} proposal lain masih menunggu persetujuan Kaprodi/Sekretaris dan belum bisa dinilai.</p>
+            @endif
         </section>
 
         <section>

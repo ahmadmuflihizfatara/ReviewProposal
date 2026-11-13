@@ -1,4 +1,5 @@
 @php
+    use App\Models\Proposal;
     use App\Models\Review;
 
     $steps = [
@@ -7,7 +8,7 @@
         3 => 'Catatan setiap aspek',
         4 => 'Rekomendasi',
     ];
-    $canReview = ! $existingReview;
+    $canReview = $registrationReady && ! $existingReview;
 @endphp
 
 <x-layout title="Nilai Proposal">
@@ -37,12 +38,17 @@
 
         <label for="registration_number" class="label mt-5">Nomor registrasi</label>
         <div class="flex flex-col sm:flex-row gap-3">
-            <input id="registration_number" name="registration_number" value="{{ $registrationNumber }}" required
-                   placeholder="contoh: PRP-{{ now()->year }}-0001" class="input uppercase sm:max-w-sm" autocomplete="off"
+            <input id="registration_number" name="registration_number" value="{{ $registrationNumber }}" required maxlength="30"
+                   pattern="{{ Proposal::REGISTRATION_NUMBER_PATTERN }}" data-uppercase
+                   data-pattern-message="Format harus PL{prodi}/{No}/{Bulan Romawi}/{Tahun}, contoh PLTI/001/XI/{{ now()->year }}."
+                   placeholder="contoh: PLTI/001/{{ ['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII'][now()->month - 1] }}/{{ now()->year }}" class="input uppercase sm:max-w-sm" autocomplete="off"
                    @readonly($proposal->registration_number)>
             <button class="btn btn-secondary">Lanjutkan</button>
         </div>
-        <p class="mt-2 font-sans text-xs text-cloud-dark">Diisi manual oleh reviewer. Bila proposal sudah punya nomor, nomor tersebut dipakai.</p>
+        @if ($registrationError)
+            <p class="error">{{ $registrationError }}</p>
+        @endif
+        <p class="mt-2 font-sans text-xs text-cloud-dark">Format PL{prodi}/{No}/{Bulan Romawi}/{Tahun}: prodi 2–5 huruf kapital, nomor 3 digit (001–999), bulan I–XII, tahun 4 digit. Langkah 2–4 terbuka setelah nomor valid. Bila proposal sudah punya nomor, nomor tersebut dipakai.</p>
 
         @if ($existingReview)
             <p class="mt-3 font-sans text-sm">
@@ -76,20 +82,27 @@
             {{-- Langkah 2 --}}
             <section data-step class="card">
                 <h3 class="font-sans font-semibold text-xl">2. Skor untuk setiap aspek substantif</h3>
-                <p class="mt-1 font-sans text-sm text-cloud-dark">Isi bebas untuk skor dan nilai (angka atau karakter apa pun), boleh dikosongkan.</p>
+                <p class="mt-1 font-sans text-sm text-cloud-dark">Skor wajib diisi untuk setiap aspek, berupa bilangan bulat 0–100. Nilai terisi otomatis: skor × bobot.</p>
 
                 <div class="mt-6 divide-y divide-stone">
                     @foreach (Review::ASPECTS as $key => [$label, $weight])
                         <div class="py-5 grid gap-3 md:grid-cols-[1fr_auto] md:items-center">
-                            <label for="score-{{ $key }}" class="text-lg leading-snug">{{ $label }}</label>
-                            <div class="flex gap-3">
-                                <input id="score-{{ $key }}" name="scores[{{ $key }}]" value="{{ old("scores.$key") }}" maxlength="255" placeholder="Skor" aria-label="Skor {{ $label }}" class="input md:w-32" autocomplete="off">
-                                <input name="values[{{ $key }}]" value="{{ old("values.$key") }}" maxlength="255" placeholder="Nilai" aria-label="Nilai {{ $label }}" class="input md:w-32" autocomplete="off">
+                            <label for="score-{{ $key }}" class="text-lg leading-snug">
+                                {{ $label }}
+                                <span class="block font-sans text-sm text-cloud-dark">Bobot {{ $weight }}%</span>
+                            </label>
+                            <div class="flex items-center gap-3">
+                                <input id="score-{{ $key }}" name="scores[{{ $key }}]" value="{{ old("scores.$key") }}" type="number" min="0" max="100" step="1" inputmode="numeric" required placeholder="Skor" aria-label="Skor {{ $label }}" data-weight="{{ $weight }}" data-value-target="value-{{ $key }}" class="input md:w-32" autocomplete="off">
+                                <span class="font-sans text-sm text-cloud-dark">× {{ $weight }}% =</span>
+                                <output id="value-{{ $key }}" for="score-{{ $key }}" aria-label="Nilai {{ $label }}" class="w-20 rounded-xl bg-oat-warm px-4 py-3 font-sans text-base text-right">–</output>
                             </div>
                             @error("scores.$key") <p class="error md:col-span-2">{{ $message }}</p> @enderror
-                            @error("values.$key") <p class="error md:col-span-2">{{ $message }}</p> @enderror
                         </div>
                     @endforeach
+                    <div class="pt-5 flex items-center justify-end gap-3 font-sans">
+                        <span class="font-semibold">Total nilai</span>
+                        <output id="value-total" aria-live="polite" class="w-20 rounded-xl bg-slate-dark text-ivory-light px-4 py-3 text-right font-semibold">–</output>
+                    </div>
                 </div>
 
                 <div class="mt-6 flex justify-end">
@@ -100,13 +113,13 @@
             {{-- Langkah 3 --}}
             <section data-step class="card mt-6">
                 <h3 class="font-sans font-semibold text-xl">3. Catatan untuk setiap aspek</h3>
-                <p class="mt-1 font-sans text-sm text-cloud-dark">Opsional. Tuliskan alasan skor serta saran perbaikan.</p>
+                <p class="mt-1 font-sans text-sm text-cloud-dark">Wajib, 10–2.000 karakter per aspek. Tuliskan alasan skor serta saran perbaikan.</p>
 
                 <div class="mt-6 space-y-6">
                     @foreach (Review::ASPECTS as $key => [$label])
                         <div>
                             <label for="notes-{{ $key }}" class="label">{{ $label }}</label>
-                            <textarea id="notes-{{ $key }}" name="notes[{{ $key }}]" rows="3" maxlength="2000"
+                            <textarea id="notes-{{ $key }}" name="notes[{{ $key }}]" rows="3" required minlength="10" maxlength="2000"
                                       class="input font-serif text-lg leading-relaxed">{{ old("notes.$key") }}</textarea>
                             @error("notes.$key") <p class="error">{{ $message }}</p> @enderror
                         </div>
@@ -122,8 +135,9 @@
             {{-- Langkah 4 --}}
             <section data-step class="card mt-6">
                 <label for="recommendation_note" class="label text-xl font-semibold">4. Rekomendasi</label>
-                <textarea id="recommendation_note" name="recommendation_note" rows="4" maxlength="2000"
+                <textarea id="recommendation_note" name="recommendation_note" rows="4" required minlength="10" maxlength="2000"
                           class="input font-serif text-lg leading-relaxed">{{ old('recommendation_note') }}</textarea>
+                <p class="mt-1 font-sans text-xs text-cloud-dark">Wajib, 10–2.000 karakter.</p>
                 @error('recommendation_note') <p class="error">{{ $message }}</p> @enderror
 
                 <div class="mt-8 flex justify-between">

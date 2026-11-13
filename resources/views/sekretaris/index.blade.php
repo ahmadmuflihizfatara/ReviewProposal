@@ -16,9 +16,10 @@
         </div>
         <div class="flex-1">
             <label for="amount" class="label">Ubah anggaran tersedia (Rp)</label>
-            <input id="amount" name="amount" type="number" min="0" step="1" inputmode="numeric" value="{{ $budget->amount }}" required class="input">
+            <input id="amount" name="amount" type="number" min="0" max="{{ \App\Models\Budget::MAX_AMOUNT }}" step="1" inputmode="numeric" value="{{ $budget->amount }}" required class="input">
         </div>
         <button class="btn btn-primary shrink-0">Simpan anggaran</button>
+        @error('amount') <p class="error sm:basis-full">{{ $message }}</p> @enderror
     </form>
 
     <div class="grid gap-10 lg:grid-cols-2">

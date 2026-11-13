@@ -15,14 +15,30 @@ class ProposalReviewFlowTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * @return array<string, mixed>
+     */
+    private function validReview(Proposal $proposal, string $registrationNumber = 'PLTI/001/XI/2026'): array
+    {
+        $keys = array_keys(Review::ASPECTS);
+
+        return [
+            'proposal_id' => $proposal->id,
+            'registration_number' => $registrationNumber,
+            'scores' => array_fill_keys($keys, '80'),
+            'notes' => array_fill_keys($keys, 'Cukup baik dan jelas.'),
+            'recommendation_note' => 'Layak didanai dengan perbaikan minor.',
+        ];
+    }
+
     public function test_user_can_register_with_reviewer_role(): void
     {
         $this->post('/register', [
-            'name' => 'Rina',
-            'email' => 'rina@example.com',
+            'name' => 'Rina Wati',
+            'email' => 'Rina@Example.com',
             'role' => 'reviewer',
-            'password' => 'password123',
-            'password_confirmation' => 'password123',
+            'password' => 'Rahasia123',
+            'password_confirmation' => 'Rahasia123',
         ])->assertRedirect(route('dashboard'));
 
         $this->assertAuthenticated();
@@ -30,121 +46,177 @@ class ProposalReviewFlowTest extends TestCase
         $this->get('/')->assertRedirect(route('reviews.index'));
     }
 
-    public function test_account_can_register_and_login_with_free_input(): void
+    public function test_registration_rejects_invalid_input(): void
     {
-        $this->post('/register', ['name' => 'X', 'email' => 'bukan email', 'role' => 'issuer', 'password' => ''])
-            ->assertRedirect(route('dashboard'));
-        $this->post('/logout');
+        $existing = User::factory()->create();
 
-        $this->post('/login', ['email' => 'bukan email', 'password' => ''])->assertRedirect(route('dashboard'));
-        $this->assertAuthenticated();
+        $this->post('/register', [
+            'name' => 'X1',
+            'email' => 'bukan email',
+            'role' => 'admin',
+            'password' => 'lemah',
+            'password_confirmation' => 'beda',
+        ])->assertSessionHasErrors(['name', 'email', 'role', 'password']);
+
+        $this->post('/register', [
+            'name' => 'Budi',
+            'email' => $existing->email,
+            'role' => 'issuer',
+            'password' => 'semuakecil1',
+            'password_confirmation' => 'semuakecil1',
+        ])->assertSessionHasErrors(['email', 'password']);
+
+        $this->assertGuest();
+        $this->assertSame(1, User::count());
     }
 
-    public function test_issuer_submits_proposal_without_registration_number(): void
+    public function test_login_requires_valid_email_and_password(): void
+    {
+        $this->post('/login', ['email' => 'bukan email', 'password' => ''])
+            ->assertSessionHasErrors(['email', 'password']);
+
+        $this->assertGuest();
+    }
+
+    public function test_issuer_submits_proposal_with_valid_input(): void
     {
         Storage::fake();
         $issuer = User::factory()->create();
 
         $this->actingAs($issuer)->post('/proposals', [
             'title' => 'Sistem Irigasi Pintar',
-            'summary' => 'Ringkasan proposal.',
+            'summary' => str_repeat('Ringkasan proposal. ', 5),
+            'budget' => '15000000',
             'file' => UploadedFile::fake()->create('proposal.pdf', 100, 'application/pdf'),
-        ])->assertRedirect();
+        ])->assertSessionHasNoErrors()->assertRedirect();
 
         $proposal = Proposal::sole();
         $this->assertNull($proposal->registration_number);
+        $this->assertSame(15_000_000, $proposal->budget);
         Storage::assertExists($proposal->file_path);
     }
 
-    public function test_issuer_can_submit_proposal_without_file(): void
+    public function test_proposal_submission_rejects_invalid_input(): void
     {
-        $this->actingAs(User::factory()->create())->post('/proposals', ['title' => 'T', 'summary' => 'S'])
-            ->assertSessionHasNoErrors();
+        Storage::fake();
 
-        $proposal = Proposal::sole();
-        $this->assertNull($proposal->file_path);
-        $this->get(route('proposals.show', $proposal))->assertOk()->assertDontSee('Unduh berkas');
-        $this->get(route('proposals.file', $proposal))->assertNotFound();
+        $this->actingAs(User::factory()->create())->post('/proposals', [
+            'title' => 'Pendek',
+            'summary' => 'Terlalu singkat.',
+            'budget' => '50000',
+            'file' => UploadedFile::fake()->create('proposal.docx', 100, 'application/msword'),
+        ])->assertSessionHasErrors(['title', 'summary', 'budget', 'file']);
+
+        $this->post('/proposals', [
+            'title' => 'Judul yang cukup panjang',
+            'summary' => str_repeat('a', 60),
+            'budget' => '2000000000',
+        ])->assertSessionHasErrors(['budget', 'file']);
+
+        $this->assertSame(0, Proposal::count());
     }
 
-    public function test_reviewer_completes_four_step_review(): void
+    public function test_reviewer_completes_sequential_review(): void
     {
         $reviewer = User::factory()->reviewer()->create();
-        $proposal = Proposal::factory()->create();
+        $proposal = Proposal::factory()->approved()->create();
 
-        // Langkah 1: pilih proposal dan isi nomor registrasi manual.
+        // Langkah 1 belum diisi: langkah 2–4 belum tampil.
         $this->actingAs($reviewer)
-            ->get(route('reviews.create', ['proposal' => $proposal->id, 'registration_number' => 'prp-2026-0001']))
+            ->get(route('reviews.create', ['proposal' => $proposal->id]))
             ->assertOk()
-            ->assertSee($proposal->title)
-            ->assertSee('PRP-2026-0001');
+            ->assertDontSee('2. Skor untuk setiap aspek');
 
-        // Langkah 2–4: skor, catatan, rekomendasi.
-        $scores = array_fill_keys(array_keys(Review::ASPECTS), '5');
-        $scores['metode'] = '7';
+        // Nomor registrasi salah format: langkah 2–4 tetap tertutup.
+        $this->get(route('reviews.create', ['proposal' => $proposal->id, 'registration_number' => 'PRP-2026-0001']))
+            ->assertOk()
+            ->assertSee('Format nomor registrasi')
+            ->assertDontSee('2. Skor untuk setiap aspek');
 
-        $this->post('/reviews', [
-            'proposal_id' => $proposal->id,
-            'registration_number' => 'prp-2026-0001',
-            'scores' => $scores,
-            'values' => array_fill_keys(array_keys(Review::ASPECTS), 'A+'),
-            'notes' => array_fill_keys(array_keys(Review::ASPECTS), 'Cukup baik.'),
-            'recommendation_note' => 'Layak didanai',
-        ])->assertRedirect(route('proposals.show', $proposal));
+        // Nomor valid (huruf kecil dikapitalkan): langkah 2–4 terbuka.
+        $this->get(route('reviews.create', ['proposal' => $proposal->id, 'registration_number' => 'pltI/001/xi/2026']))
+            ->assertOk()
+            ->assertSee('PLTI/001/XI/2026')
+            ->assertSee('2. Skor untuk setiap aspek');
 
-        $this->assertSame('PRP-2026-0001', $proposal->fresh()->registration_number);
+        // Nilai dari input diabaikan: selalu dihitung server dari skor × bobot.
+        $input = $this->validReview($proposal, 'pltI/001/xi/2026');
+        $input['scores']['metodologi'] = '85';
+        $input['values'] = array_fill_keys(array_keys(Review::ASPECTS), '100');
+
+        $this->post('/reviews', $input)
+            ->assertRedirect(route('proposals.show', $proposal));
+
+        $this->assertSame('PLTI/001/XI/2026', $proposal->fresh()->registration_number);
         $review = Review::sole();
-        $this->assertSame('7', $review->scores['metode']);
-        $this->assertSame('A+', $review->values['metode']);
-        $this->assertSame($reviewer->id, $review->reviewer_id);
+        $this->assertSame(80, $review->scores['metode']);
+        $this->assertEquals(16, $review->values['latar_belakang']);  // 80 × 20%
+        $this->assertEquals(12.75, $review->values['metodologi']);  // 85 × 15%
+        $this->assertEquals(8, $review->values['referensi']);       // 80 × 10%
+        $this->assertEquals(80.75, $review->totalValue());
         $this->assertNotNull($review->signed_at);
 
         // Tidak bisa menilai dua kali.
-        $this->post('/reviews', [
-            'proposal_id' => $proposal->id,
-            'registration_number' => 'PRP-2026-0001',
-            'scores' => $scores,
-            'notes' => array_fill_keys(array_keys(Review::ASPECTS), 'Lagi.'),
-            'recommendation_note' => 'Layak didanai',
-        ]);
+        $this->post('/reviews', $this->validReview($proposal));
         $this->assertSame(1, Review::count());
 
         // Pengusul melihat hasil penilaian.
         $this->actingAs($proposal->issuer)
             ->get(route('proposals.show', $proposal))
             ->assertOk()
-            ->assertSee('Layak didanai')
-            ->assertSee('A+');
+            ->assertSee('Layak didanai dengan perbaikan minor.')
+            ->assertSee('12,75')
+            ->assertSee('80,75');
     }
 
-    public function test_review_accepts_any_input_and_empty_notes(): void
+    public function test_review_rejects_out_of_range_scores_and_empty_notes(): void
     {
-        $reviewer = User::factory()->reviewer()->create();
-        $proposal = Proposal::factory()->create();
-
-        $this->actingAs($reviewer)->post('/reviews', [
-            'proposal_id' => $proposal->id,
-            'registration_number' => 'PRP-2026-0002',
-            'scores' => array_fill_keys(array_keys(Review::ASPECTS), 'abc'),
-        ])->assertSessionHasNoErrors();
-
-        $this->assertSame('abc', Review::sole()->scores['metode']);
-    }
-
-    public function test_duplicate_registration_number_and_email_are_reported_not_crashed(): void
-    {
-        $taken = Proposal::factory()->registered()->create();
-        $proposal = Proposal::factory()->create();
+        $proposal = Proposal::factory()->approved()->create();
+        $input = $this->validReview($proposal);
+        $input['scores']['metode'] = '101';
+        $input['scores']['luaran'] = '-1';
+        $input['scores']['referensi'] = '12.5';
+        $input['notes']['metode'] = '';
+        $input['recommendation_note'] = '';
 
         $this->actingAs(User::factory()->reviewer()->create())
-            ->post('/reviews', ['proposal_id' => $proposal->id, 'registration_number' => $taken->registration_number])
-            ->assertSessionHasErrors('registration_number');
-        $this->assertNull($proposal->fresh()->registration_number);
+            ->post('/reviews', $input)
+            ->assertSessionHasErrors(['scores.metode', 'scores.luaran', 'scores.referensi', 'notes.metode', 'recommendation_note']);
 
-        $user = User::factory()->create();
-        $this->post('/logout');
-        $this->post('/register', ['name' => 'X', 'email' => $user->email, 'role' => 'issuer'])
-            ->assertSessionHasErrors('email');
+        $this->assertSame(0, Review::count());
+        $this->assertNull($proposal->fresh()->registration_number);
+    }
+
+    public function test_registration_number_must_match_format_and_be_unique(): void
+    {
+        $reviewer = User::factory()->reviewer()->create();
+        Proposal::factory()->approved()->create(['registration_number' => 'PLTI/001/XI/2026']);
+        $proposal = Proposal::factory()->approved()->create();
+
+        foreach (['PLTI/001/XI/2026', 'PLTI/000/XI/2026', 'PLTI/001/13/2026', 'TI/001/XI/2026', 'PLT/001/XI/2026'] as $number) {
+            $this->actingAs($reviewer)
+                ->post('/reviews', $this->validReview($proposal, $number))
+                ->assertSessionHasErrors('registration_number');
+        }
+
+        $this->assertNull($proposal->fresh()->registration_number);
+        $this->assertSame(0, Review::count());
+    }
+
+    public function test_reviewer_cannot_review_unapproved_proposal(): void
+    {
+        $reviewer = User::factory()->reviewer()->create();
+
+        foreach ([Proposal::factory()->create(), Proposal::factory()->approvedByKaprodi()->create()] as $proposal) {
+            $this->actingAs($reviewer)
+                ->get(route('reviews.create', ['proposal' => $proposal->id]))
+                ->assertRedirect(route('reviews.index'));
+
+            $this->post('/reviews', $this->validReview($proposal))->assertRedirect(route('reviews.index'));
+        }
+
+        $this->assertSame(0, Review::count());
+        $this->get(route('reviews.index'))->assertOk()->assertSee('2 proposal lain masih menunggu persetujuan');
     }
 
     public function test_roles_are_enforced(): void
@@ -156,5 +228,16 @@ class ProposalReviewFlowTest extends TestCase
         $this->actingAs($issuer)->get('/reviews/create')->assertForbidden();
         $this->actingAs($issuer)->get(route('proposals.show', $otherProposal))->assertForbidden();
         $this->actingAs($reviewer)->get('/proposals/create')->assertForbidden();
+    }
+
+    public function test_docs_page_lists_validation_rules(): void
+    {
+        $this->get(route('docs'))
+            ->assertOk()
+            ->assertSee('PLTI/001/XI/2026')
+            ->assertSee('Bilangan bulat 0–100')
+            ->assertSee('Manajemen referensi')
+            ->assertSee('skor × bobot')
+            ->assertSee('8–64 karakter');
     }
 }

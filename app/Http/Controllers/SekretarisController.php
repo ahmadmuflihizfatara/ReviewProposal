@@ -29,7 +29,11 @@ class SekretarisController extends Controller
 
     public function updateBudget(Request $request): RedirectResponse
     {
-        Budget::current()->update(['amount' => max(0, (int) $request->input('amount'))]);
+        $data = $request->validate([
+            'amount' => ['required', 'integer', 'between:0,'.Budget::MAX_AMOUNT],
+        ]);
+
+        Budget::current()->update(['amount' => (int) $data['amount']]);
 
         return back()->with('status', 'Anggaran tersedia diperbarui.');
     }
@@ -39,6 +43,11 @@ class SekretarisController extends Controller
      */
     public function approve(Proposal $proposal): RedirectResponse
     {
+        // Urutan wajib: Kaprodi menyetujui lebih dulu, baru Sekretaris.
+        if ($proposal->kaprodi_approved_at === null) {
+            return back()->with('status', 'Proposal belum disetujui Kaprodi, sehingga belum bisa disetujui Sekretaris.');
+        }
+
         $message = DB::transaction(function () use ($proposal): string {
             $budget = Budget::current(lockForUpdate: true);
 
@@ -52,7 +61,7 @@ class SekretarisController extends Controller
                 ->update(['sekretaris_approved_at' => now()]);
 
             if (! $approved) {
-                return 'Proposal belum disetujui Kaprodi atau sudah disetujui Sekretaris.';
+                return 'Proposal ini sudah disetujui Sekretaris sebelumnya.';
             }
 
             $budget->decrement('amount', $proposal->budget);
