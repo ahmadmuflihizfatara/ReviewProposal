@@ -25,7 +25,7 @@ class AuthController extends Controller
 
     public function login(Request $request): RedirectResponse
     {
-        $request->merge(['email' => strtolower(trim((string) $request->input('email')))]);
+        $request->merge(['email' => strtolower(trim(is_string($request->input('email')) ? $request->input('email') : ''))]);
 
         $credentials = $request->validate([
             'email' => ['required', 'string', 'email', 'max:255'],
@@ -50,7 +50,7 @@ class AuthController extends Controller
 
     public function register(Request $request): RedirectResponse
     {
-        $request->merge(['email' => strtolower(trim((string) $request->input('email')))]);
+        $request->merge(['email' => strtolower(trim(is_string($request->input('email')) ? $request->input('email') : ''))]);
 
         $data = $request->validate([
             'name' => ['required', 'string', 'min:3', 'max:100', 'regex:/^'.self::NAME_PATTERN.'$/u'],

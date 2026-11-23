@@ -33,7 +33,8 @@ class ReviewController extends Controller
      */
     public function create(Request $request): View|RedirectResponse
     {
-        $proposal = Proposal::find($request->query('proposal'));
+        $proposalId = $request->query('proposal');
+        $proposal = is_string($proposalId) && ctype_digit($proposalId) ? Proposal::find($proposalId) : null;
 
         if (! $proposal) {
             return redirect()->route('reviews.index');
@@ -44,7 +45,7 @@ class ReviewController extends Controller
         }
 
         $registrationNumber = $proposal->registration_number
-            ?? strtoupper(trim((string) $request->query('registration_number')));
+            ?? strtoupper(trim(is_string($request->query('registration_number')) ? $request->query('registration_number') : ''));
         $registrationError = null;
 
         if ($proposal->registration_number === null && $request->has('registration_number')) {
@@ -68,7 +69,8 @@ class ReviewController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $request->merge(['registration_number' => strtoupper(trim((string) $request->input('registration_number')))]);
+        $registrationInput = $request->input('registration_number');
+        $request->merge(['registration_number' => strtoupper(trim(is_string($registrationInput) ? $registrationInput : ''))]);
         $request->validate(['proposal_id' => ['required', 'integer', 'exists:proposals,id']]);
         $proposal = Proposal::findOrFail($request->input('proposal_id'));
 
