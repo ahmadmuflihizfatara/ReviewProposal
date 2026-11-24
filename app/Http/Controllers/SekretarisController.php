@@ -14,7 +14,8 @@ class SekretarisController extends Controller
     public function index(): View
     {
         return view('sekretaris.index', [
-            'budget' => Budget::current(),
+            // ASVS 3.5.3: GET hanya membaca; baris anggaran baru dibuat oleh aksi POST/PUT.
+            'budget' => Budget::query()->first() ?? new Budget(['amount' => 0]),
             'pendingProposals' => Proposal::with('issuer')
                 ->whereNotNull('kaprodi_approved_at')
                 ->whereNull('sekretaris_approved_at')

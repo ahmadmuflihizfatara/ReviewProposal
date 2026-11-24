@@ -7,6 +7,7 @@ use App\Models\Review;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -74,6 +75,123 @@ class SecurityHeadersTest extends TestCase
                 ->get("http://localhost{$path}")
                 ->assertHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
         }
+    }
+
+    /**
+     * ASVS 3.5.1: aplikasi tidak mengandalkan CORS preflight, jadi setiap rute
+     * pengubah state (POST/PUT/PATCH/DELETE) harus menolak request lintas-origin
+     * tanpa token anti-forgery. Middleware CSRF dilewati otomatis saat env=testing,
+     * sehingga env dipaksa di sini agar penegakannya benar-benar teruji.
+     */
+    public function test_every_state_changing_route_rejects_requests_without_csrf_token(): void
+    {
+        $this->app['env'] = 'production';
+        $checked = 0;
+
+        foreach (app('router')->getRoutes() as $route) {
+            $methods = array_diff($route->methods(), ['GET', 'HEAD', 'OPTIONS']);
+
+            if ($methods === [] || ! in_array('web', $route->gatherMiddleware(), true)) {
+                continue;
+            }
+
+            $uri = '/'.preg_replace('/\{[^}]+\}/', '1', $route->uri());
+
+            // Request forgery lintas-situs: browser menandai Sec-Fetch-Site: cross-site, tanpa token.
+            $this->call(reset($methods), $uri, [], [], [], ['HTTP_SEC_FETCH_SITE' => 'cross-site'])
+                ->assertStatus(419);
+            $checked++;
+        }
+
+        $this->assertGreaterThanOrEqual(8, $checked);
+    }
+
+    /**
+     * ASVS 3.5.3: fungsi sensitif hanya terjangkau lewat POST/PUT/PATCH/DELETE;
+     * GET dan HEAD ke URI tersebut ditolak (405), bukan dijalankan.
+     */
+    public function test_sensitive_actions_are_not_reachable_with_safe_methods(): void
+    {
+        $getUris = [];
+        $unsafeOnly = [];
+
+        foreach (app('router')->getRoutes() as $route) {
+            if (in_array('GET', $route->methods(), true)) {
+                $getUris[] = $route->uri();
+            } else {
+                $unsafeOnly[] = $route;
+            }
+        }
+
+        $checked = 0;
+
+        foreach ($unsafeOnly as $route) {
+            if (in_array($route->uri(), $getUris, true)) {
+                continue;
+            }
+
+            $uri = '/'.preg_replace('/\{[^}]+\}/', '1', $route->uri());
+            $this->call('GET', $uri)->assertStatus(405);
+            $this->call('HEAD', $uri)->assertStatus(405);
+            $checked++;
+        }
+
+        $this->assertGreaterThanOrEqual(4, $checked);
+    }
+
+    /**
+     * ASVS 3.5.3: sebaliknya, setiap rute GET/HEAD tidak mengubah data apa pun.
+     */
+    public function test_safe_method_routes_do_not_modify_data(): void
+    {
+        Storage::fake();
+        Storage::put('proposals/a.pdf', '%PDF-1.4');
+        $proposal = Proposal::factory()->approved()->registered()->create(['file_path' => 'proposals/a.pdf']);
+        $users = [
+            $proposal->issuer,
+            User::factory()->kaprodi()->create(),
+            User::factory()->sekretaris()->create(),
+            User::factory()->create(['role' => 'reviewer']),
+        ];
+        $snapshot = fn () => collect(['users', 'proposals', 'reviews', 'budgets'])
+            ->map(fn ($table) => DB::table($table)->orderBy('id')->get()->toJson())
+            ->all();
+        $before = $snapshot();
+        $visited = 0;
+
+        foreach (app('router')->getRoutes() as $route) {
+            if (! in_array('GET', $route->methods(), true)) {
+                continue;
+            }
+
+            $uri = '/'.ltrim(preg_replace('/\{[^}]+\}/', (string) $proposal->id, $route->uri()), '/');
+
+            foreach ($users as $user) {
+                $this->actingAs($user)->call('GET', $uri);
+                $this->actingAs($user)->call('HEAD', $uri);
+                $visited++;
+            }
+        }
+
+        $this->assertGreaterThan(20, $visited);
+        $this->assertSame($before, $snapshot());
+    }
+
+    public function test_request_with_valid_csrf_token_is_not_rejected_as_forgery(): void
+    {
+        $this->app['env'] = 'production';
+
+        $this->withSession(['_token' => 'token-valid'])
+            ->post('/login', ['_token' => 'token-valid'])
+            ->assertStatus(302);
+    }
+
+    public function test_application_sends_no_permissive_cors_headers(): void
+    {
+        $response = $this->withHeaders(['Origin' => 'https://evil.example'])->get(route('login'));
+
+        $response->assertHeaderMissing('Access-Control-Allow-Origin');
+        $response->assertHeaderMissing('Access-Control-Allow-Credentials');
     }
 
     /**
