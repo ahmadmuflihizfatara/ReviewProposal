@@ -52,6 +52,31 @@ class SecurityHeadersTest extends TestCase
     }
 
     /**
+     * ASVS 3.4.1: HSTS (min. 1 tahun, termasuk subdomain) pada semua respons HTTPS,
+     * termasuk rute di luar grup web (/up) dan 404.
+     */
+    public function test_https_responses_send_hsts_header(): void
+    {
+        foreach (['/login', '/up', '/tidak-ada'] as $path) {
+            $this->get("https://localhost{$path}")
+                ->assertHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+        }
+    }
+
+    /**
+     * ASVS 3.4.1: di belakang reverse proxy yang menghentikan TLS, request sampai
+     * ke aplikasi sebagai HTTP + X-Forwarded-Proto: https; HSTS tetap harus terkirim.
+     */
+    public function test_hsts_is_sent_behind_tls_terminating_proxy(): void
+    {
+        foreach (['/login', '/up', '/tidak-ada'] as $path) {
+            $this->withHeaders(['X-Forwarded-Proto' => 'https'])
+                ->get("http://localhost{$path}")
+                ->assertHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+        }
+    }
+
+    /**
      * ASVS 1.3.2: kode aplikasi tidak memakai eval()/eksekusi kode dinamis,
      * dan CSP tidak mengizinkan 'unsafe-eval' di browser.
      */

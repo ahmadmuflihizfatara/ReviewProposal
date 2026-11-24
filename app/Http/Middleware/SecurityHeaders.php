@@ -31,6 +31,11 @@ class SecurityHeaders
 
         $response->headers->set('X-Content-Type-Options', 'nosniff');
 
+        // ASVS 3.4.1: HSTS hanya bermakna lewat HTTPS (browser mengabaikannya di HTTP).
+        if ($request->isSecure()) {
+            $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+        }
+
         return $response;
     }
 }

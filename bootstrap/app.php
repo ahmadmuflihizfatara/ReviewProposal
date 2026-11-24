@@ -15,8 +15,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Global (bukan grup web) agar /up dan 404 non-rute juga menerima header keamanan.
+        $middleware->append(SecurityHeaders::class);
+        // ponytail: '*' karena IP proxy server tidak diketahui; persempit ke IP proxy bila ada.
+        $middleware->trustProxies(at: '*');
         $middleware->web(
-            append: [SecurityHeaders::class],
             replace: [BasePreventRequestForgery::class => PreventRequestForgery::class],
         );
     })
